@@ -1,0 +1,366 @@
+代理与事件是DotNet的两个重要概念，但好多朋友感觉没有这两个概念照样能够进行常规的DotNet开发。其实深入理解这两个概念对DotNet研究非常重要，尤其在WCSF的开发时，如果不理解这两个概念那你就很难把View层和Presenter层的代码进行分离。
+以前从网上看过几篇这方面的文章，总感觉有点晦涩难懂，希望这篇文章能对大家理解代理与事件有所帮助。
+一、代理
+首先我们要弄清代理是个什么东西。别让一串翻译过来的概念把大家搞晕了头。
+有的文章把代理称委托、代表等，其实它们是一个东西，英文表述都是“Delegate”。由于没有一本权威的书来规范这个概念，所以现在网上对它的称谓不一。本文我将以“代理”来称谓Delegate。
+代理是什么呢？我认为“代理就是用来定义指向方法的引用”。下面我们就通过类来理解代理。
+
+如：
+Ren r = new Ren("车延禄");
+上面的代码，就是使用Ren这个类定义了一个指“车延禄”这个对象实例的一个引用。
+也可以这样理解：用Ren类定义的变量r，指向一个“车延禄”对象的实例。
+类所定义的变量指向的是一个对象，代理所定义的变量指向的是个方法，当然这个方法可以是静态方法也可以是实例方法。对代理引用的调用就是对代理所指向方法的调用。
+
+1.代理声明的语法：
+   [public/private] delegate <返回值类型> <代理名称>(<参数列表>);
+  
+  [public/private]：访问修饰符。
+   delegate：代理声明关键定，相当于类声明的Class关键定
+   <返回值类型>：代理所指向的方法的返回值类型
+   <代理名称>：代理类型的名称
+   <参数列表>：代理所的指向的方法的参数列表。
+  
+   要想使代理对象能够指向一个方法，那这个方法的要满足两个条件
+  a.方法返回类型要与delegate声明中的“返回值类型”一致。
+   b.方法的形参形表要与delegate声明中的“参数列表”一致。
+  
+   如：
+  delegate void MyDelegate(string str,int index);
+   该代理声明表示：该代理指向的方法必须是返回空类型，并且拥有两个参数，第一个是字符串类型，第二个是整型。
+
+2.代理“实例化”：
+   代理声明相当于类的定义。有了类的定义后我们要还需生成这个类的对象；同样有了代理的声明我们还需要“实例化”代理
+  
+   如：MyDelegate md = new MyDelegate(Show);
+  
+   这里的md就是代理变量。在代理的“实例化”的时候必须在构造函数中传入一个方法名。这个方法名就是该代理指向的方法，当然该方法的返回值类型与参数类型一定要与代理的声明一致。
+  
+   Show方法定义如下：
+  public static void Show(string str, int index)
+    {
+        Console.WriteLine("Show"+str+index.ToString());
+    }
+
+3.代理的调用：
+  md("hello world",22);
+  此时调用的就是md这个代理变量所指向的Show方法。
+
+4.例子：
+delegate void MyDelegate(string str,int index);
+    class Test
+    {
+        public static void Show(string str, int index)
+        {
+            Console.WriteLine("Show"+str+index.ToString());
+        }
+        public static void Main(string[] args)
+        {
+            MyDelegate md = new MyDelegate(Show);
+            md("hello world",22);
+        }
+    }
+
+5.代理的应用：
+  代理的主要应用就是在DotNet中的事件处理，所以要想研究事件我们必须要理解代理的概念。有的文章使用代理进行冒泡排序，我感觉这没必要，因为不用代理我也可以排序，更况且在C#语法中也不需要我们手动编写冒泡排序代码。
+   关于代理，大家要理解代理是个什么东西，并且能够写一个简单的代理示例就可以了。
+
+二、多播代理
+上面我们讲的代理是一个代理对象指向一个方法，在调用该代理对象的时候就会调用它所指向的方法。多播代理就是为一个代理挂接上多个方法，当执行该代理的时候就会依次执行该代理上挂接的方法。
+
+1.多播代理的声明与上面讲得基本上一样：
+  
+[public/private] delegate void <代理名称>(<参数列表>);
+  
+   只有一点不一样的就是，多播代理所指向的方法应当是void类型。
+
+2.多播代理“实例化”
+   多播代理“实例化”与上面讲得一样，在此不多说了。
+  
+   如：MyDelegate md = new MyDelegate(Show);
+  
+3.多播代理挂接多个方法。
+  多播代理可以使用 += 运算符挂接多个方法，也可以使用 -= 运算符从挂接列表中删除相应的挂接方法。
+  
+   如：
+delegate void MyDelegate(string str,int index);
+    class Test
+    {
+        public static void Show(string str, int index)
+        {
+            Console.WriteLine("Show"+str+index.ToString());
+        }
+        public static void TestInt(string str, int index)
+        {
+            Console.WriteLine("Testint");
+        }
+        public static void Main2(string[] args)
+        {
+            MyDelegate md = new MyDelegate(Show);
+            md += new MyDelegate(TestInt);
+            md("hello world",22);
+        }
+    }
+    在上面这个例子当中有两个方法（Show和TestInt）符合MyDelegate代理的签名，如果要把这两个方法挂接到我们一个代理变量上去的话，就得用 += 运算符了。
+     MyDelegate md = new MyDelegate(Show);
+    md += new MyDelegate(TestInt);
+   这里的md代理变量上先挂接了Show方法，再挂接TestInt方法。当执行md("hello world",22)的时候会先调用Show方法，再调用TestInt方法。
+   事件本身就是一种多播代理
+  
+三、事件
+C＃中的事件就是代理的一个变量。它和属性、方法一样，都是类的成员。只不过事件是指向一个方法，当事件被触发时，就会执行对象的相关方法。
+事件的这种对方法的引用并不是写死在代码里面的，而是可以进行更改的。辟如：我们在DotNet中按钮的OnClick事件，它可以指向符合OnClick事件签名的任何一个方法。
+1.事件的定义使用event关键字：
+  public event CryHandler DuckCryEvent;
+  
+   其中的CryHandler是一个delegate。从上面的代码我们可以看出来：事件就是一个代理类型的变量。
+  private delegate void CryHandler();
+
+2.指定事件处理程序：
+   指定事件处理程序就是为事件挂接方法的过程。
+  DuckCryEvent +=new CryHandler(Cry);
+  public void Cry()
+    {
+        Console.WriteLine("我是一只小鸭，呀依呀依呀....");
+    }
+   
+3.执行事件
+  执行事件就是调用事件所指向方法的过程。一般对事的执行代码写在相应的方法或属性中，如果方法或属性被调用时就触发事件。
+  public void BeShaked()
+    {
+        DuckCryEvent();
+    }
+   
+4.完整的例子：
+  //事件用到的代理，以般以×××Handler的格式进行命名
+   private delegate void CryHandler();
+   //玩具小鸭的类
+    class Duck
+    {
+       //定义小鸭的唱歌事件
+        public event CryHandler DuckCryEvent;
+        public Duck()
+        {
+           //把小鸭唱歌的事件挂接到Cry方法上
+            DuckCryEvent +=new CryHandler(Cry);
+        }
+        //小鸭唱歌事件对应的处理方法
+        public void Cry()
+        {
+            Console.WriteLine("我是一只小鸭，呀呀呀....");
+        }
+        //小鸭被摇动
+        public void BeShaked()
+        {
+           //执行事件
+            DuckCryEvent();
+        }
+    }
+    class Class2
+    {
+        public static void Main3(string[] args)
+        {
+           //买一只小鸭
+            Duck d = new Duck();
+            //摇一摇小鸭，它就会调触发小鸭的Cry事件，小鸭就会唱歌
+            d.BeShaked();
+        }
+    }
+   
+四、事件在ASP.NET中的举例
+页面源视图代码
+  <form id="form1" runat="server">
+    <asp:Button ID="Button1" runat="server" onclick="Haha" Text="Button" />
+   </form>
+这个按钮默认执行的是页面对象HaHa方法。
+页面后置代码
+  protected void XiXi(object sender, EventArgs e)
+    {
+        Response.Write("XiXi<br>");
+    }
+    protected void Button1_Click(object sender, EventArgs e)
+    {
+        Response.Write("Button1Click<br>");
+    }
+    protected void Haha(object sender, EventArgs e)
+    {
+        Response.Write("HaHa<br>");
+    }
+上面的这三个方法都是符合按钮的OnClick事件签名格式
+因此我们可以让按钮点击的时候，把这三个方法都执行一遍。实现方式当然就是多播代理了。
+  protected override void OnInit(EventArgs e)
+    {
+        base.OnInit(e);
+        Button1.Click += new EventHandler(Button1_Click);
+        Button1.Click += new EventHandler(XiXi);
+    }
+   
+五、综合案例分析
+1.面试题：晚上猫大叫一声，主人被惊醒，老鼠被下跑。用C#实现这个过程。
+   这个题目中一共有三个对象：猫、主人和老鼠。这三个对象之间即不属于Is a...的关系也不属于Has a...的关系，但三者又有相互联系。
+  
+  不能把主人和老鼠作为猫的成员变量出现，因为猫对象并不拥有主人和老鼠这两个对象。
+   不能在猫任何方法中实例化主人和老鼠。因为猫的任何动作都不会动态产生主人和老鼠。
+   不能在猫的Cry方法中传入主人对象和老鼠对象，因为猫大叫不是为了叫醒主人或吓跑老鼠，可能是猫正在说梦话。所以把主人和老鼠对象传递给猫的Cry()方法也不合情理。
+  
+   通过上面分析我们看到，即不能把主人和老鼠作为猫的成员变量，又不能动态产生或接收主人、老鼠对象，那这三者之间如何建立关系呢？
+   当然是是我们刚讲过的事件。
+  
+  主人类中有一个“惊醒”的方法;猫的类中有一个“大叫”的方法;老鼠类中有一个“逃跑”方法。并且猫中还有一个“大叫”事件，这个事件是多播代理，它依次调用主人的“惊醒”方法和老鼠的“逃跑”方法。
+   下面是具体代码：
+  //定义猫大叫事件的代理
+   public delegate void AlertHandler();
+   //主人类
+    class Human
+    {
+       //主人被惊醒的方法
+        public void Wake()
+        {
+            Console.WriteLine("主人：死猫别叫");
+        }
+    }
+    //老鼠类
+    class Mouse
+    {
+       //老鼠被吓包的方法
+        public void Run()
+        {
+            Console.WriteLine("老鼠：有危险,快撤！");
+        }
+    }
+    //猫类
+    class Cat
+    {
+       //猫大叫事件
+        public event AlertHandler AlertEvent;
+        public Cat()
+        {
+           //猫大叫时执行Cry方法
+            AlertEvent +=new AlertHandler(Cry);
+        }
+        //猫大叫事件执行的处理程序
+        public void Alert()
+        {
+            Console.WriteLine("猫：呜哇...呜哇...");
+        }
+        //猫大叫的方法
+        public void Cry()
+        {
+           //触发猫大叫的事件
+            AlertEvent();
+        }
+    }
+    //房子类
+    class House
+    {
+       //房子里有一只老鼠、一只猫和主人
+        public Mouse mouse = new Mouse();
+        public Cat cat = new Cat();
+        public Human human = new Human();
+        //由于在一个房子里，猫大叫的事件会引发老鼠“逃跑”和主人“惊醒”
+        //所以在这里把老鼠“逃跑”和主人“惊醒”两个方法挂接到猫大叫的事件上。
+        public House()
+        {
+            cat.AlertEvent +=new AlertHandler(mouse.Run);
+            cat.AlertEvent +=new AlertHandler(human.Wake);
+        }
+
+    }
+    //客户程序
+    class Program
+    {
+        static void Main(string[] args)
+        {
+           //有一间房子
+            House h = new House();
+            //猫大叫
+            h.cat.Cry();
+        }
+    }
+   2.闹钟：
+   //闹钟事件数据
+  class TimeArgs : EventArgs
+    {
+       //闹钟声明
+        private string _Message;
+        //闹铃时间
+        private int _RingTime;
+        //默认闹铃
+        public TimeArgs()
+        {
+            _Message = "滴滴...滴滴...";
+            _RingTime = 0;
+        }
+        public TimeArgs(string message, int ringtime)
+        {
+            this._Message = message;
+            this._RingTime = ringtime;
+        }
+        //设置闹铃声音
+        public string Message
+        {
+            get
+            {
+                return _Message;
+            }
+            set
+            {
+                _Message = value;
+            }
+        }
+        //设置闹铃时间
+        public int RingTime
+        {
+            get
+            {
+                return _RingTime;
+            }
+            set
+            {
+                _RingTime = value;
+            }
+        }
+    }
+   
+    //闹铃代理
+    delegate void RingHandler(object sender,TimeArgs e);
+    class Clock
+    {
+       //闹铃事件
+        private event RingHandler RingEvent;
+        public Clock()
+        {
+           //把闹铃事件挂接到方法上
+            RingEvent += new RingHandler(Clock_RingEvent);
+        }
+     //闹铃事件处理程序
+        private void Clock_RingEvent(object sender, TimeArgs e)
+        {
+            Console.WriteLine(e.Message);
+        }
+        //闹铃时间监测
+        private void ReadyToRing(TimeArgs e)
+        {
+            while (true)
+            {
+                System.Threading.Thread.Sleep(1000);
+                if (DateTime.Now.Hour == e.RingTime)
+                {
+                    RingEvent(this, e);
+                }
+            }
+        }
+        //设置闹铃
+        public void SetTime(TimeArgs e)
+        {
+            ReadyToRing(e);
+        }
+    }
+    class Class3
+    {
+        public static void Main(string[] args)
+        {
+            Clock clock = new Clock();
+            TimeArgs arg = new TimeArgs("赖虫起床......", 21);
+            clock.SetTime(arg);
+        }
+    }
